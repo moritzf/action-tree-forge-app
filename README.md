@@ -144,6 +144,20 @@ After registration and setting the variables/secrets:
 
 An initial push before credentials are configured will pass CI and fail deployment at the configuration check. Re-run manually after configuration. `FORGE_APP_ID` is injected into the manifest only inside CI; the site's hostname is never hardcoded in application code or workflow source.
 
+## Technical decisions
+
+| Decision | Reason and tradeoff |
+| --- | --- |
+| **Native Forge UI Kit instead of Custom UI** | Jira-styled components, a native modal and `AdfRenderer` cover the current workflow without a separate HTML/CSS application or frontend build. Layout and styling remain constrained by UI Kit; reconsider Custom UI if richer interactions require it. |
+| **Issue context panel with a launch button** | Keeps conversion next to the source issue in the sidebar. Jira controls panel placement, so the app cannot guarantee an exact position below Automation. |
+| **Regular Tasks with reciprocal issue links** | Supports recursive trees while keeping every created issue a Task. These links do not participate in Jira's native `parent` hierarchy. |
+| **ADF parsing and rich issue cards** | Reads the native checkbox/bullet structure directly and replaces only the selected list with `inlineCard` nodes. Unsupported content is rejected to avoid silently losing structure. |
+| **User-authorized Jira calls (`asUser()`)** | Each invocation respects the current user's Jira access. Conversion depends on that user's permissions and required-field defaults. |
+| **Forge KVS and incremental resolver calls** | Keeps processing and state on Atlassian and makes partial progress resumable. The current browser-driven loop requires the popup to stay open. |
+| **Persistent creation claims and unique run IDs** | Stops automatic duplicate creation after uncertain responses while allowing identical lists in separate conversions. Ambiguous outcomes require reconciliation rather than a blind retry. |
+| **Pure tree functions and injected service dependencies** | Separates ADF transformations from Jira/storage operations so hierarchy and recovery behavior can be tested without a live site. |
+| **Automatic deployment with conditional human approval** | Ordinary changes deploy after CI; Forge major-version changes wait for the protected GitHub approval environment. That checkpoint hosts no app and is separate from the live Forge production environment. |
+
 ## Architecture and verification
 
 | File | Responsibility |
