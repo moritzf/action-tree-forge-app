@@ -7,7 +7,7 @@ Action Tree is an Atlassian Forge app built with native UI Kit. It supports Jira
 ## Features
 
 - Convert native checkbox actions or bullet points into regular **Task** issues in the same project.
-- Preserve sibling order and recursive parent-child relationships.
+- Preserve sibling order in the description and popup, and recursive parent-child relationships through issue links.
 - Link children with **is subtask of** and parents with **has subtask**.
 - Display nested rich Jira issue cards in both the description and the popup.
 - Launch from the issue sidebar below Automation.
@@ -20,7 +20,7 @@ The hierarchy uses issue links rather than Jira's built-in Sub-task issue type o
 1. Open a **Task** with a native checkbox action list or bulleted list in its description.
 2. In the issue's right sidebar, open **Apps → Action Tree** below **Automation** and click **Launch Action Tree**. Jira controls the sidebar panel order; use Jira's panel ordering controls if needed.
 3. In **Convert List to Sub-Issues**, select a list, review its preview, and click **Create Tasks** in the persistent footer beside **Close**. The item count and conversion action stay visible while the list scrolls. Keep the modal open until conversion finishes.
-4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
+4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Action Tree requests an issue-view refresh after saving, without a full-page reload. If that refresh fails, the popup confirms that the conversion is saved and asks you to reload the page.
 
 The Action Tree popup also displays created Tasks as nested rich issue cards, both during conversion and after completion.
 
@@ -39,6 +39,8 @@ For example, start with these native checkbox actions (shown here in Markdown no
 Action Tree creates seven **Task** issues in the source issue's project. A, B and G link to the source Task; C and F link to B; D and E link to C. Each child **is subtask of** its immediate parent, and each parent **has subtask** its children. These are reciprocal views of one Jira issue link per relationship. No transitive links are added between grandchildren and grandparents.
 
 The result is a bulleted tree of rich issue cards with the same shape. Each card resolves its issue title, type and status through Jira.
+
+Sibling order is preserved in this description tree and in the Action Tree popup. Jira's separate **Linked work items** panel controls its own display order; the [issue-link API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-links/) has no position or ordering field. For `A → B` followed by `C`, that panel may display `C, A` on the source issue even though the links and the description tree are correct. Link creation order does not guarantee panel display order.
 
 Other description blocks stay intact. Use native Jira editor checkbox action lists (`taskList` / `taskItem`, including paragraph-based `blockTaskItem`) or bullet lists, not plain text containing checkbox symbols or hyphens. Nested action lists follow the preceding action item in ADF; their parent relationships are preserved. Both list types become nested bulleted lists of rich issue cards.
 
@@ -201,6 +203,7 @@ These are candidate improvements, not implemented features or a committed roadma
 | Checked actions retain their original state only in the origin property; new Tasks use the default workflow status. | Offer an optional mapping from checked state to a valid workflow transition. |
 | Ambiguous creation failures can require administrator reconciliation, and there is no automatic rollback. | Add an administrator recovery view with an audit trail and explicit reconciliation controls. |
 | Concurrent description edits can race with the final update; an edited source list blocks resume. | Improve conflict detection and provide a reviewable merge or recovery flow. |
+| Jira's Linked work items panel can display siblings in a different order from the source list. | Use the ordered description/popup tree; consider a dedicated ordered tree view if more browsing features are needed. |
 | Conversion state and creation claims are retained for recovery without an app-defined cleanup schedule. | Define retention and safe cleanup rules that preserve duplicate-prevention guarantees. |
 
 The linked hierarchy also depends on a Jira administrator configuring the reciprocal link labels. It does not populate Jira's native `parent` field, so native hierarchy views and reports may not interpret these links as parent-child relationships.
