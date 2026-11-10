@@ -1,4 +1,4 @@
-# Action Tree
+# Action Tree Forge App
 
 ![Action Tree demonstration](action-tree-demonstration.gif)
 
