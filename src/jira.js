@@ -1,7 +1,7 @@
-import api, { route } from '@forge/api';
+import { asUser, route } from '@forge/api';
 
 async function request(path, method = 'GET', body) {
-  const response = await api.asUser().requestJira(path, {
+  const response = await asUser().requestJira(path, {
     method,
     headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     ...(body ? { body: JSON.stringify(body) } : {}),

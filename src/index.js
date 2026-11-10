@@ -1,4 +1,4 @@
-import Resolver from '@forge/resolver';
+import { makeResolver } from '@forge/resolver';
 import { kvs } from '@forge/kvs';
 import { conversionService } from './conversion.js';
 import { jira } from './jira.js';
@@ -10,7 +10,7 @@ const store = {
   claim: (key, value) => kvs.set(key, value, { keyPolicy: 'FAIL_IF_EXISTS' }),
 };
 const service = conversionService({ jira, store });
-const resolver = new Resolver();
+const definitions = {};
 
 function issueId(context) {
   const id = context.extension?.issue?.id;
@@ -31,14 +31,14 @@ async function locked(id, operation) {
 }
 
 // Return errors explicitly: bridge errors otherwise hide useful Jira permission messages.
-const define = (name, operation) => resolver.define(name, async (request) => {
+const define = (name, operation) => { definitions[name] = async (request) => {
   try { return { data: await operation(request, issueId(request.context)) }; }
   catch (error) { return { error: error.message }; }
-});
+}; };
 
 define('inspect', (_, id) => service.inspect(id));
 define('begin', ({ payload }, id) => locked(id, () => service.begin(id, payload.index, payload.hash)));
 define('step', (_, id) => locked(id, () => service.step(id)));
 define('recover', ({ payload }, id) => locked(id, () => service.recover(id, payload.key)));
 
-export const handler = resolver.getDefinitions();
+export const handler = makeResolver(definitions);
