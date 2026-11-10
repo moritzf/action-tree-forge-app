@@ -1,10 +1,10 @@
 # Action Tree
 
-An Atlassian Forge app that turns a nested bullet list in a Jira Task's description into a tree of linked Tasks. Built with Forge UI Kit (`@forge/react`), Jira REST API v3 and Forge Key-Value Store. All application processing and conversion state stay on Atlassian; there is no external backend.
+An Atlassian Forge app that turns a native Jira checkbox action list or nested bullet list in a Jira Task's description into a tree of linked Tasks. Built with Forge UI Kit (`@forge/react`), Jira REST API v3 and Forge Key-Value Store. All application processing and conversion state stay on Atlassian; there is no external backend.
 
 ## Usage
 
-1. Open a **Task** with a bulleted list in its description.
+1. Open a **Task** with a native checkbox action list or bulleted list in its description.
 2. In the issue's right sidebar, expand **Action Tree** below the issue fields and click **Convert with Action Tree**, then select the list and review the preview. Jira controls the sidebar panel order; place Action Tree below Automation using Jira's panel ordering controls if needed.
 3. Click **Create Tasks** and keep the modal open until conversion finishes.
 4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
@@ -23,7 +23,9 @@ For this input:
 
 Action Tree creates seven **Task** issues in the source issue's project. A, B and G link to the source Task; C and F link to B; D and E link to C. Each child **is subtask of** its immediate parent, and each parent **has subtask** its children. These are reciprocal views of one Jira issue link per relationship. They are not Jira's built-in Sub-task issue type or `parent` field, so the link-based tree can nest beyond Jira's native subtask hierarchy. No transitive links are added between grandchildren and grandparents.
 
-Other description blocks stay intact. Use real Jira editor bullet lists, not plain text containing hyphens. Up to 100 items and 20 nesting levels per conversion. Titles must be 1–255 characters. Unsupported blocks, empty items and lists already containing Jira ticket links are rejected. Created Tasks receive titles and the project/issue type; other fields use Jira's configured defaults. Extra required fields without defaults block conversion before the first creation.
+Other description blocks stay intact. Use native Jira editor checkbox action lists (`taskList` / `taskItem`, including paragraph-based `blockTaskItem`) or bullet lists, not plain text containing checkbox symbols or hyphens. Nested action lists follow the preceding action item in ADF; their parent relationships are preserved. Both list types become nested bulleted lists of rich issue cards.
+
+Checked and unchecked actions are included. The preview shows their checkbox state, and the original `TODO` / `DONE` state is recorded in each created Task's `action-tree.origin` property. Created Tasks use the project's default workflow status; checking an action does not select or transition a Jira workflow status automatically. Up to 100 items and 20 nesting levels per conversion. Titles must be 1–255 characters. Unsupported blocks, empty items and lists already containing Jira ticket links are rejected. Created Tasks receive titles and the project/issue type; other fields use Jira's configured defaults. Extra required fields without defaults block conversion before the first creation.
 
 ## Site prerequisites
 

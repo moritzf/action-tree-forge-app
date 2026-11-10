@@ -7,33 +7,49 @@ export const fingerprint = (value) => JSON.stringify(value, (_, item) => {
 });
 
 const textOf = (node) => {
+  if (node.marks?.some((mark) => mark.type === 'link' && /\/browse\//.test(mark.attrs?.href))) throw new Error('This list already contains ticket links.');
   if (node.type === 'text') return node.text;
   if (node.type === 'hardBreak') return ' ';
   if (node.type === 'mention') return node.attrs?.text || '';
   if (node.type === 'emoji') return node.attrs?.text || node.attrs?.shortName || '';
   if (node.type === 'inlineCard') throw new Error('This list already contains ticket links.');
-  if (!['paragraph', 'listItem'].includes(node.type)) throw new Error(`Unsupported list content: ${node.type}. Use text and nested bullet lists.`);
+  if (!['paragraph', 'listItem', 'taskItem', 'blockTaskItem'].includes(node.type)) throw new Error(`Unsupported list content: ${node.type}. Use text and nested action or bullet lists.`);
   return (node.content || []).map(textOf).join('');
 };
+
+const isList = (node) => ['bulletList', 'taskList'].includes(node.type);
 
 export function parseList(list) {
   const nodes = [];
   function visit(current, parent, depth) {
-    if (current.type !== 'bulletList') throw new Error('Use a bulleted list.');
+    if (!isList(current)) throw new Error('Use a Jira action list or bulleted list.');
     if (depth > 20) throw new Error('The maximum nesting depth is 20.');
+    if (!current.content?.length) throw new Error('This list is empty.');
+    let previous = null;
     for (const item of current.content || []) {
-      if (item.type !== 'listItem') throw new Error('Invalid list item.');
-      const blocks = item.content || [];
-      const paragraphs = blocks.filter((block) => block.type !== 'bulletList');
-      const summary = paragraphs.map(textOf).join(' ').trim();
-      if (!summary || summary.length > 255) throw new Error('Each item needs a title of 1–255 characters.');
-      if (paragraphs.some((p) => p.content?.some((n) => n.marks?.some((m) => m.type === 'link' && /\/browse\//.test(m.attrs?.href))))) {
-        throw new Error('This list already contains ticket links.');
+      // ADF action lists nest beside the preceding taskItem, not inside it.
+      if (current.type === 'taskList' && item.type === 'taskList') {
+        if (previous === null) throw new Error('A nested action list must follow an action item.');
+        visit(item, previous, depth + 1);
+        continue;
       }
+      const validItem = current.type === 'taskList' ? ['taskItem', 'blockTaskItem'].includes(item.type) : item.type === 'listItem';
+      if (!validItem) throw new Error('Invalid list item.');
+      const blocks = item.content || [];
+      const paragraphs = blocks.filter((block) => !isList(block));
+      const summary = paragraphs.map(textOf).join(item.type === 'taskItem' ? '' : ' ').trim();
+      if (!summary || summary.length > 255) throw new Error('Each item needs a title of 1–255 characters.');
       const index = nodes.length;
-      nodes.push({ summary, parent, depth });
+      const node = { summary, parent, depth };
+      if (current.type === 'taskList') {
+        const state = item.attrs?.state;
+        if (!['TODO', 'DONE'].includes(state)) throw new Error('An action item must have a valid checkbox state.');
+        node.actionState = state;
+      }
+      nodes.push(node);
+      previous = index;
       if (nodes.length > 100) throw new Error('Convert at most 100 items at a time.');
-      for (const child of blocks.filter((block) => block.type === 'bulletList')) visit(child, index, depth + 1);
+      for (const child of blocks.filter(isList)) visit(child, index, depth + 1);
     }
   }
   visit(list, null, 0);
@@ -44,10 +60,10 @@ export function parseList(list) {
 export function findLists(description) {
   // Only top-level lists are selectable: nested lists belong to their enclosing tree.
   return (description?.content || []).flatMap((block, index) => {
-    if (block.type !== 'bulletList') return [];
+    if (!isList(block)) return [];
     try {
       const nodes = parseList(block);
-      return [{ index, nodes, label: `${nodes[0].summary} (${nodes.length} tasks)` }];
+      return [{ index, nodes, label: `${nodes[0].summary} (${nodes.length} ${block.type === 'taskList' ? 'actions' : 'tasks'})` }];
     } catch (error) {
       return [{ index, error: error.message, label: `List ${index + 1}` }];
     }

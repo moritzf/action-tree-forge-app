@@ -7,6 +7,43 @@ export const item = (text, children) => ({ type: 'listItem', content: [paragraph
 export const list = (...items) => ({ type: 'bulletList', content: items });
 export const example = list(item('A'), item('B', list(item('C', list(item('D'), item('E'))), item('F'))), item('G'));
 
+const action = (text, state = 'TODO') => ({ type: 'taskItem', attrs: { localId: `item-${text}`, state }, content: [{ type: 'text', text }] });
+const actions = (...content) => ({ type: 'taskList', attrs: { localId: 'list' }, content });
+const actionExample = actions(action('A'), action('B'), actions(action('C'), actions(action('D'), action('E', 'DONE')), action('F')), action('G'));
+
+test('native action-list nesting attaches each sibling taskList to the preceding action', () => {
+  const parsed = parseList(actionExample);
+  assert.deepEqual(parsed.map(({ summary, parent, depth }) => ({ summary, parent, depth })), parseList(example));
+  assert.deepEqual(parsed.map((node) => node.actionState), ['TODO', 'TODO', 'TODO', 'TODO', 'DONE', 'TODO', 'TODO']);
+  const document = { type: 'doc', version: 1, content: [paragraph('Before'), actionExample, paragraph('After')] };
+  const choices = findLists(document);
+  assert.equal(choices.length, 1);
+  assert.equal(choices[0].index, 1);
+  assert.equal(choices[0].label, 'A (7 actions)');
+  const converted = replaceList(document, 1, actionExample, linkedList(parsed.map((node, index) => ({ ...node, key: `TEST-${index}` })), 'https://example.atlassian.net'));
+  assert.equal(converted.content[1].type, 'bulletList');
+  assert.deepEqual(converted.content[0], document.content[0]);
+  assert.deepEqual(converted.content[2], document.content[2]);
+});
+
+test('action titles handle formatted inline text and paragraph-based block action items', () => {
+  const formatted = action('Hello ');
+  formatted.content.push({ type: 'text', text: 'world', marks: [{ type: 'strong' }] });
+  assert.equal(parseList(actions(formatted))[0].summary, 'Hello world');
+  const block = { type: 'blockTaskItem', attrs: { localId: 'block', state: 'DONE' }, content: [paragraph('One'), paragraph('two')] };
+  assert.deepEqual(parseList(actions(block)), [{ summary: 'One two', parent: null, depth: 0, actionState: 'DONE' }]);
+});
+
+test('malformed action trees and previously converted action items cannot create tickets', () => {
+  assert.throws(() => parseList(actions(actions(action('Orphan')))), /must follow an action item/);
+  assert.throws(() => parseList(actions(action('Unknown', 'OTHER'))), /valid checkbox state/);
+  const converted = action('Existing');
+  converted.content = [{ type: 'inlineCard', attrs: { url: 'https://example.atlassian.net/browse/T-1' } }];
+  assert.throws(() => parseList(actions(converted)), /already contains ticket links/);
+  converted.content = [{ type: 'text', text: 'T-1', marks: [{ type: 'link', attrs: { href: 'https://example.atlassian.net/browse/T-1' } }] }];
+  assert.throws(() => parseList(actions(converted)), /already contains ticket links/);
+});
+
 test('the supplied A–G list preserves every immediate parent and sibling order', () => {
   assert.deepEqual(parseList(example), [
     { summary: 'A', parent: null, depth: 0 },

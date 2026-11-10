@@ -22,7 +22,7 @@ export function conversionService({ jira, store }) {
     if (existing && !existing.done) return existing;
     const issue = await source(issueId);
     const list = findLists(issue.fields.description).find((entry) => entry.index === index);
-    if (!list || list.error) throw new Error(list?.error || 'Choose a bulleted list from the description.');
+    if (!list || list.error) throw new Error(list?.error || 'Choose an action list or bulleted list from the description.');
     const original = issue.fields.description.content[index];
     if (digest(original) !== expected) throw new Error('The list changed. Close and reopen Action Tree to preview it again.');
     const setup = await jira.preflight(issue);
@@ -47,7 +47,9 @@ export function conversionService({ jira, store }) {
         if (await store.get(claim)) throw new Error(`Creation outcome for “${node.summary}” is uncertain. An administrator must reconcile the create claim before retrying. See README recovery instructions.`);
         await store.claim(claim, { summary: node.summary, sourceKey: run.sourceKey });
         try {
-          const created = await jira.createTask(run.projectId, run.taskTypeId, node.summary, { source: run.sourceKey, run: run.id, index });
+          const marker = { source: run.sourceKey, run: run.id, index };
+          if (node.actionState) marker.actionState = node.actionState;
+          const created = await jira.createTask(run.projectId, run.taskTypeId, node.summary, marker);
           node.key = created.key;
           await save();
         } catch (error) {

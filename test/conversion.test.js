@@ -42,6 +42,29 @@ test('create, link, resume and replace use Task type and the source as root pare
   assert.deepEqual(f.state.fields.description.content[1], p('Keep me'));
 });
 
+test('native checkbox actions convert with nested links and retain original completion metadata', async () => {
+  const f = fixture();
+  const actionList = { type: 'taskList', attrs: { localId: 'root' }, content: [
+    { type: 'taskItem', attrs: { localId: 'parent', state: 'DONE' }, content: [{ type: 'text', text: 'Parent' }] },
+    { type: 'taskList', attrs: { localId: 'nested' }, content: [
+      { type: 'taskItem', attrs: { localId: 'child', state: 'TODO' }, content: [{ type: 'text', text: 'Child' }] },
+    ] },
+  ] };
+  f.state.fields.description.content[0] = actionList;
+  const preview = await f.service.inspect('1');
+  assert.equal(preview.lists[0].label, 'Parent (2 actions)');
+  await f.service.begin('1', 0, preview.lists[0].hash);
+  await f.service.step('1');
+  await f.service.step('1');
+  const done = await f.service.step('1');
+  assert.equal(done.done, true);
+  assert.deepEqual(f.calls.created.map((args) => args[3].actionState), ['DONE', 'TODO']);
+  assert.deepEqual(f.calls.links.map((body) => [body.inwardIssue.key, body.outwardIssue.key]), [['T-1', 'T-2'], ['T-2', 'T-3']]);
+  assert.equal(f.state.fields.description.content[0].type, 'bulletList');
+  assert.equal(f.state.fields.description.content[0].content[0].content[0].content[0].type, 'inlineCard');
+  assert.deepEqual(f.state.fields.description.content[1], p('Keep me'));
+});
+
 test('failed link retries without recreating the already saved Task', async () => {
   const f = fixture();
   await f.service.begin('1', 0, digest(list));

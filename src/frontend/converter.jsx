@@ -59,14 +59,15 @@ export default function Converter({ onClose }) {
     </>}
     {!preview && !error && <Spinner label="Reading issue description" />}
     {preview && <>
-      <Text>Create Tasks from a nested bullet list in {preview.key}. Each root links to this issue; each nested task links to its immediate parent using “is subtask of” / “has subtask”.</Text>
+      <Text>Create Tasks from a Jira action list or bullet list in {preview.key}. Each root links to this issue; each nested task links to its immediate parent using “is subtask of” / “has subtask”.</Text>
       {(!run || run.done) && !run?.done && <>
         <Select label="Description list" options={preview.lists.map((list) => ({ label: list.error ? `${list.label}: ${list.error}` : list.label, value: list.index, isDisabled: !!list.error }))}
           value={selected ? { label: selected.label, value: selected.index } : null}
           onChange={(option) => setSelected(preview.lists.find((list) => list.index === option?.value) || null)} />
-        {!preview.lists.length && <Text>Add a bulleted list to the issue description, then reopen Action Tree.</Text>}
+        {!preview.lists.length && <Text>Add a checkbox action list or bulleted list to the issue description, then reopen Action Tree.</Text>}
       </>}
-      {!run?.done && nodes?.map((node, index) => <Text key={index}>{`${'　'.repeat(node.depth)}• ${node.summary}`}</Text>)}
+      {!run?.done && nodes?.map((node, index) => <Text key={index}>{`${'　'.repeat(node.depth)}${node.actionState ? (node.actionState === 'DONE' ? '☑' : '☐') : '•'} ${node.summary}`}</Text>)}
+      {!run?.done && nodes?.some((node) => node.actionState === 'DONE') && <Text>Checked actions are included. New Tasks use the project's default workflow status; the original checkbox state is recorded on each Task.</Text>}
       {run && <>
         <ProgressBar value={run.done ? 1 : complete / (run.nodes.length + 1)} />
         <Text>{run.done ? 'Done. The description now contains the nested issue card list.' : `${complete} of ${run.nodes.length} Tasks created and linked. Keep this window open while converting.`}</Text>
