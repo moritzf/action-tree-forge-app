@@ -15,7 +15,7 @@ Action Tree is an Atlassian Forge app built with native UI Kit. It supports Jira
 - Launch from the issue sidebar below Automation.
 - Preview before creating issues and resume saved conversion progress.
 
-The hierarchy uses issue links rather than Jira's built-in Sub-task issue type or `parent` field. This allows Tasks to nest beyond Jira's native subtask hierarchy.
+The hierarchy uses issue links rather than Jira's built-in Sub-task issue type or `parent` field. This allows Tasks to *nest beyond Jira's native subtask hierarchy*.
 
 ## Usage
 
