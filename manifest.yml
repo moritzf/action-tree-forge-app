@@ -21,7 +21,7 @@ permissions:
     - write:jira-work
     - storage:app
 app:
-  id: ari:cloud:ecosystem::app/00000000-0000-4000-8000-000000000000
+  id: ari:cloud:ecosystem::app/e33feedf-6b09-4d8a-8f64-f32f69d1b443
   runtime:
     name: nodejs24.x
     memoryMB: 256
