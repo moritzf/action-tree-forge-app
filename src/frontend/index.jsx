@@ -69,11 +69,11 @@ function App() {
       {!run?.done && nodes?.map((node, index) => <Text key={index}>{`${'　'.repeat(node.depth)}• ${node.summary}`}</Text>)}
       {run && <>
         <ProgressBar value={run.done ? 1 : complete / (run.nodes.length + 1)} />
-        <Text>{run.done ? 'Done. The description now contains the nested ticket list.' : `${complete} of ${run.nodes.length} Tasks created and linked. Keep this window open while converting.`}</Text>
+        <Text>{run.done ? 'Done. The description now contains the nested issue card list.' : `${complete} of ${run.nodes.length} Tasks created and linked. Keep this window open while converting.`}</Text>
         {run.nodes.filter((node) => node.key).map((node) => <Text key={node.key}><Link href={`${run.baseUrl}/browse/${node.key}`}>{node.key}</Link>{` — ${node.summary}`}</Text>)}
       </>}
       {run?.done && preview.lists.some((list) => !list.error) && <Button onClick={() => setRun(null)}>Convert another list</Button>}
-      {!run?.done && <Text>The selected list will become a nested bulleted list of ticket links. Other description content is preserved. Up to 100 Tasks per conversion.</Text>}
+      {!run?.done && <Text>The selected list will become a nested bulleted list of rich Jira issue cards. Other description content is preserved. Up to 100 Tasks per conversion.</Text>}
       {!run?.done && <Button appearance="primary" isLoading={busy} isDisabled={busy || (!selected && !run)} onClick={convert}>{run ? 'Resume conversion' : `Create ${selected?.nodes?.length || ''} Tasks`}</Button>}
     </>}
     <Button isDisabled={busy} onClick={() => view.close()}>Close</Button>

@@ -28,7 +28,13 @@ test('replacement preserves surrounding rich text and rejects changes to the sel
   assert.deepEqual(changed.content[2], document.content[2]);
   assert.deepEqual(document.content[1], example);
   assert.equal(changed.content[1].content[1].content[1].content[0].content[1].content.length, 2);
-  assert.equal(changed.content[1].content[0].content[0].content[0].marks[0].attrs.href, 'https://example.atlassian.net/browse/TEST-1');
+  const cards = [];
+  const collect = (node) => {
+    if (node.type === 'inlineCard') cards.push(node);
+    for (const child of node.content || []) collect(child);
+  };
+  collect(changed.content[1]);
+  assert.deepEqual(cards, nodes.map((node) => ({ type: 'inlineCard', attrs: { url: `https://example.atlassian.net/browse/${node.key}` } })));
   assert.equal(replaceList(changed, 1, example, replacement), changed);
   assert.throws(() => replaceList({ ...document, content: [paragraph('changed')] }, 1, example, replacement), /source list changed/);
   assert.match(findLists(changed)[0].error, /already contains ticket links/);

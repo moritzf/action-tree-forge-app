@@ -7,7 +7,7 @@ An Atlassian Forge app that turns a nested bullet list in a Jira Task's descript
 1. Open a **Task** with a bulleted list in its description.
 2. Choose **••• → Action Tree**, select the list and review the preview.
 3. Click **Create Tasks** and keep the modal open until conversion finishes.
-4. The selected list becomes a nested bulleted list of clickable issue keys and titles. Refresh the issue if necessary.
+4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
 
 For this input:
 

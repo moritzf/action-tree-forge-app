@@ -61,8 +61,7 @@ export function linkedList(nodes, baseUrl) {
       if (node.parent !== parent) return [];
       if (!node.key) throw new Error('Every task must be created before replacing the list.');
       const content = [{ type: 'paragraph', content: [
-        { type: 'text', text: node.key, marks: [{ type: 'link', attrs: { href: `${baseUrl}/browse/${node.key}` } }] },
-        { type: 'text', text: ` — ${node.summary}` },
+        { type: 'inlineCard', attrs: { url: `${baseUrl}/browse/${node.key}` } },
       ] }];
       if (nodes.some((child) => child.parent === index)) content.push(build(index));
       return [{ type: 'listItem', content }];
