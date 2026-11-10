@@ -1,12 +1,12 @@
 modules:
-  jira:issueAction:
-    - key: action-tree
+  jira:issueContext:
+    - key: action-tree-context
       title: Action Tree
+      label: Convert with Action Tree
       resource: main
       render: native
       resolver:
         function: resolver
-      viewportSize: large
       displayConditions:
         issueType: Task
   function:

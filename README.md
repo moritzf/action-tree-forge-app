@@ -5,7 +5,7 @@ An Atlassian Forge app that turns a nested bullet list in a Jira Task's descript
 ## Usage
 
 1. Open a **Task** with a bulleted list in its description.
-2. Choose **••• → Action Tree**, select the list and review the preview.
+2. In the issue's right sidebar, expand **Action Tree** below the issue fields and click **Convert with Action Tree**, then select the list and review the preview. Jira controls the sidebar panel order; place Action Tree below Automation using Jira's panel ordering controls if needed.
 3. Click **Create Tasks** and keep the modal open until conversion finishes.
 4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
 
@@ -80,7 +80,8 @@ An initial push before credentials are configured will pass CI and fail deployme
 
 | File | Responsibility |
 | --- | --- |
-| `src/frontend/index.jsx` | Native UI Kit preview, confirmation, progress and resume |
+| `src/frontend/index.jsx` | Issue sidebar button and native UI Kit modal |
+| `src/frontend/converter.jsx` | Preview, confirmation, progress and resume |
 | `src/index.js` | Resolver boundary, trusted issue context, per-issue conversion lease |
 | `src/conversion.js` | Durable conversion state machine, create claims and recovery boundaries |
 | `src/jira.js` | User-authorized Jira REST calls, field/permission preflight and link operations |
