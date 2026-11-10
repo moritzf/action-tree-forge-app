@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { conversionService, digest } from '../src/conversion.js';
+import { conversionService, digest } from '../src/conversion.ts';
 
 const p = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
 const list = { type: 'bulletList', content: [

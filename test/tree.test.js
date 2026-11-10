@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseList, linkedList, replaceList, findLists, linkPayload } from '../src/tree.js';
+import { parseList, linkedList, replaceList, findLists, linkPayload } from '../src/tree.ts';
 
 export const paragraph = (text) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
 export const item = (text, children) => ({ type: 'listItem', content: [paragraph(text), ...(children ? [children] : [])] });

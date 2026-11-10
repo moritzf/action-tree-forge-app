@@ -1,40 +1,42 @@
+import type { ConversionRun, ConversionStore, JiraClient, TaskOrigin } from './types';
+import { isDefinitiveRejection } from './errors';
 import { createHash, randomUUID } from 'node:crypto';
-import { findLists, fingerprint, linkedList, replaceList, linkPayload } from './tree.js';
+import { findLists, fingerprint, linkedList, replaceList, linkPayload } from './tree';
 
-export const digest = (value) => createHash('sha256').update(fingerprint(value)).digest('hex');
+export const digest = (value: unknown): string => createHash('sha256').update(fingerprint(value)).digest('hex');
 
 // Leave room for created issue keys and progress flags as the stored run grows.
 const MAX_INITIAL_RUN_BYTES = 180_000;
 
 // Inject Jira and storage so failure/recovery behavior can be tested without a site.
-export function conversionService({ jira, store }) {
-  const stateKey = (issueId) => `action-tree:${issueId}`;
-  async function source(issueId) {
+export function conversionService({ jira, store }: { jira: JiraClient; store: ConversionStore }) {
+  const stateKey = (issueId: string) => `action-tree:${issueId}`;
+  async function source(issueId: string) {
     const issue = await jira.getIssue(issueId);
     if (issue.fields.issuetype.name.toLowerCase() !== 'task' || issue.fields.issuetype.subtask) {
       throw new Error('Action Tree works on Task issues only.');
     }
     return issue;
   }
-  async function inspect(issueId) {
+  async function inspect(issueId: string) {
     const issue = await source(issueId);
     const description = issue.fields.description;
     const lists = findLists(description).map((list) => ({
       ...list,
-      hash: digest(description.content[list.index]),
+      hash: digest(description?.content[list.index]),
     }));
-    return { key: issue.key, lists, run: await store.get(stateKey(issueId)) };
+    return { key: issue.key, lists, run: await store.get<ConversionRun>(stateKey(issueId)) };
   }
-  async function begin(issueId, index, expected) {
-    const existing = await store.get(stateKey(issueId));
+  async function begin(issueId: string, index: number, expected: string) {
+    const existing = await store.get<ConversionRun>(stateKey(issueId));
     if (existing && !existing.done) return existing;
     const issue = await source(issueId);
     const list = findLists(issue.fields.description).find((entry) => entry.index === index);
-    if (!list || list.error) throw new Error(list?.error || 'Choose an action list or bulleted list from the description.');
+    if (!list || !list.nodes || !issue.fields.description) throw new Error(list?.error || 'Choose an action list or bulleted list from the description.');
     const original = issue.fields.description.content[index];
     if (digest(original) !== expected) throw new Error('The list changed. Close and reopen Action Tree to preview it again.');
     const setup = await jira.preflight(issue);
-    const run = {
+    const run: ConversionRun = {
       // A fresh conversion must not reuse claims from an identical, completed list.
       id: randomUUID(),
       index,
@@ -50,9 +52,9 @@ export function conversionService({ jira, store }) {
     await store.set(stateKey(issueId), run);
     return run;
   }
-  async function step(issueId) {
+  async function step(issueId: string) {
     await source(issueId); // Authorize every invocation, including resumed conversions.
-    const run = await store.get(stateKey(issueId));
+    const run = await store.get<ConversionRun>(stateKey(issueId));
     if (!run) throw new Error('Preview a list before converting.');
     if (run.done) return run;
     const save = () => store.set(stateKey(issueId), run);
@@ -66,18 +68,19 @@ export function conversionService({ jira, store }) {
         if (await store.get(claim)) throw new Error(`Creation outcome for “${node.summary}” is uncertain. An administrator must reconcile the create claim before retrying. See README recovery instructions.`);
         await store.claim(claim, { summary: node.summary, sourceKey: run.sourceKey });
         try {
-          const marker = { source: run.sourceKey, run: run.id, index };
+          const marker: TaskOrigin = { source: run.sourceKey, run: run.id, index };
           if (node.actionState) marker.actionState = node.actionState;
           const created = await jira.createTask(run.projectId, run.taskTypeId, node.summary, marker);
           node.key = created.key;
           // Persist the issue key before linking so link failures cannot recreate it.
           await save();
         } catch (error) {
-          if (error.definitive) await store.delete(claim);
+          if (isDefinitiveRejection(error)) await store.delete(claim);
           throw error;
         }
       }
       const parent = node.parent === null ? run.sourceKey : run.nodes[node.parent].key;
+      if (!parent) throw new Error('The parent Task has not been created. Resume its creation before linking.');
       await jira.ensureLink(linkPayload(run.linkType, parent, node.key));
       node.linked = true;
       await save();
@@ -94,9 +97,9 @@ export function conversionService({ jira, store }) {
     await save();
     return run;
   }
-  async function recover(issueId, key) {
+  async function recover(issueId: string, key: string) {
     await source(issueId);
-    const run = await store.get(stateKey(issueId));
+    const run = await store.get<ConversionRun>(stateKey(issueId));
     if (!run || run.done) throw new Error('No conversion needs recovery.');
     const index = run.nodes.findIndex((node) => !node.linked);
     if (index === -1 || run.nodes[index].key) throw new Error('Resume conversion to retry linking or the description update.');

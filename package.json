@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "Convert nested Jira action lists into linked Task trees with Atlassian Forge UI Kit",
   "scripts": {
-    "test": "node --test",
+    "test": "node --import tsx --test",
     "lint": "eslint src test scripts eslint.config.js",
-    "check": "npm run lint && npm test",
-    "forge": "forge"
+    "check": "npm run lint && npm run typecheck && npm test",
+    "forge": "forge",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "moritzf",
@@ -24,9 +25,13 @@
     "@babel/eslint-parser": "^8.0.7",
     "@eslint/js": "^10.0.1",
     "@forge/cli": "^15.1.0",
+    "@types/node": "^24.19.2",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
-    "node": "^24.22.2"
+    "node": "^24.22.2",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2"
   },
   "private": true,
   "engines": {

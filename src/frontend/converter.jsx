@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AdfRenderer, Button, Heading, Inline, ModalBody, ModalFooter, ProgressBar, SectionMessage, Select, Spinner, Stack, Text, Textfield } from '@forge/react';
 import { invoke } from '@forge/bridge';
-import { linkedList } from '../tree.js';
+import { linkedList } from '../tree.ts';
 
 async function call(name, payload) {
   const result = await invoke(name, payload);
