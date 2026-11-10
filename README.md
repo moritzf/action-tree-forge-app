@@ -1,4 +1,4 @@
-# Action Tree Forge App
+# Action Tree - Convert Nested Action List Items to Jira Sub-Issues
 
 ![Action Tree demonstration](action-tree-demonstration.gif)
 
