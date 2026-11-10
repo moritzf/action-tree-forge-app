@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AdfRenderer, Button, Heading, Inline, ProgressBar, SectionMessage, Select, Spinner, Stack, Text, Textfield } from '@forge/react';
+import { AdfRenderer, Button, Heading, Inline, ModalBody, ModalFooter, ProgressBar, SectionMessage, Select, Spinner, Stack, Text, Textfield } from '@forge/react';
 import { invoke } from '@forge/bridge';
 import { linkedList } from '../tree.js';
 
@@ -9,7 +9,7 @@ async function call(name, payload) {
   return result.data;
 }
 
-export default function Converter({ onBusyChange }) {
+export default function Converter({ onBusyChange, onClose }) {
   const [preview, setPreview] = useState(null);
   const [selected, setSelected] = useState(null);
   const [run, setRun] = useState(null);
@@ -26,6 +26,7 @@ export default function Converter({ onBusyChange }) {
   }, []);
 
   async function convert() {
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
@@ -44,7 +45,14 @@ export default function Converter({ onBusyChange }) {
 
   const nodes = run && !run.done ? run.nodes : selected?.nodes;
   const complete = run?.nodes.filter((node) => node.linked).length || 0;
-  return <Stack space="space.200">
+  const count = run?.nodes.length || selected?.nodes.length || 0;
+  const actionLabel = busy
+    ? (run && complete === count ? 'Updating description…' : `Converting ${complete} of ${count}…`)
+    : (run ? 'Resume conversion' : `Create ${count} Tasks`);
+
+  // Keep actions outside ModalBody so only the preview and results scroll.
+  return <>
+    <ModalBody><Stack space="space.200">
     <Heading as="h2" size="medium">Convert List to Sub-Issues</Heading>
     {error && <SectionMessage appearance="error" title="Conversion paused"><Text>{error}</Text></SectionMessage>}
     {error.includes('uncertain') && <>
@@ -87,8 +95,18 @@ export default function Converter({ onBusyChange }) {
       </>}
       {run?.done && preview.lists.some((list) => !list.error) && <Inline><Button onClick={() => setRun(null)}>Convert another list</Button></Inline>}
       {!run?.done && <Text>Up to 100 items per conversion.</Text>}
-      {!run?.done && <Inline><Button appearance="primary" isLoading={busy} isDisabled={busy || (!selected && !run)} onClick={convert}>{run ? 'Resume conversion' : `Create ${selected?.nodes?.length || ''} Tasks`}</Button></Inline>}
     </>}
-  </Stack>;
+    </Stack></ModalBody>
+    <ModalFooter>
+      <Inline grow="fill" spread="space-between" alignBlock="center" space="space.200" shouldWrap>
+        <Text>{run?.done ? `${count} Tasks created` : `${count} items selected`}</Text>
+        <Inline space="space.100">
+          <Button isDisabled={busy} onClick={onClose}>Close</Button>
+          {preview && !run?.done && <Button appearance="primary" isLoading={busy}
+            isDisabled={busy || (!selected && !run)} onClick={convert}>{actionLabel}</Button>}
+        </Inline>
+      </Inline>
+    </ModalFooter>
+  </>;
 }
 

@@ -19,7 +19,7 @@ The hierarchy uses issue links rather than Jira's built-in Sub-task issue type o
 
 1. Open a **Task** with a native checkbox action list or bulleted list in its description.
 2. In the issue's right sidebar, open **Apps → Action Tree** below **Automation** and click **Launch Action Tree**. Jira controls the sidebar panel order; use Jira's panel ordering controls if needed.
-3. In **Convert List to Sub-Issues**, select a list, review its preview, and click **Create Tasks**. Keep the modal open until conversion finishes.
+3. In **Convert List to Sub-Issues**, select a list, review its preview, and click **Create Tasks** in the persistent footer beside **Close**. The item count and conversion action stay visible while the list scrolls. Keep the modal open until conversion finishes.
 4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
 
 The Action Tree popup also displays created Tasks as nested rich issue cards, both during conversion and after completion.
@@ -189,7 +189,6 @@ These are candidate improvements, not implemented features or a committed roadma
 
 | Current limitation | Possible improvement |
 | --- | --- |
-| **Create Tasks** appears after the preview, requiring scrolling for long lists. | Move the primary action and item count into a persistent modal footer. |
 | Conversion advances through browser-driven resolver calls; closing the popup interrupts progress. | Add background processing with a progress view that can be reopened. |
 | Only direct description action lists and bullet lists are selectable, one list per conversion. | Support lists inside panels or tables, numbered lists, and selecting multiple lists. |
 | Only regular Task issues in the source project are created. Required fields without defaults block conversion. | Add configurable issue types, field input, and project mappings. |
