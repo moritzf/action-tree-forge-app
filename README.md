@@ -1,33 +1,64 @@
 # Action Tree
 
-An Atlassian Forge app that turns a native Jira checkbox action list or nested bullet list in a Jira Task's description into a tree of linked Tasks. Built with Forge UI Kit (`@forge/react`), Jira REST API v3 and Forge Key-Value Store. All application processing and conversion state stay on Atlassian; there is no external backend.
+Turn a nested Jira action list into a tree of linked Task issues, then replace the source list with rich issue cards.
+
+Action Tree is an Atlassian Forge app built with native UI Kit. It supports Jira checkbox action lists and bullet lists, preserves parent-child relationships, and can resume an interrupted conversion. Application processing and conversion state stay on Atlassian; there is no external backend.
+
+## Features
+
+- Convert native checkbox actions or bullet points into regular **Task** issues in the same project.
+- Preserve sibling order and recursive parent-child relationships.
+- Link children with **is subtask of** and parents with **has subtask**.
+- Display nested rich Jira issue cards in both the description and the popup.
+- Launch from the issue sidebar below Automation.
+- Preview before creating issues and resume saved conversion progress.
+
+The hierarchy uses issue links rather than Jira's built-in Sub-task issue type or `parent` field. This allows Tasks to nest beyond Jira's native subtask hierarchy.
 
 ## Usage
 
 1. Open a **Task** with a native checkbox action list or bulleted list in its description.
-2. In the issue's right sidebar, expand **Action Tree** below the issue fields and click **Launch Action Tree**, then select the list and review the preview. Jira controls the sidebar panel order; place Action Tree below Automation using Jira's panel ordering controls if needed.
-3. Click **Create Tasks** and keep the modal open until conversion finishes.
+2. In the issue's right sidebar, open **Apps → Action Tree** below **Automation** and click **Launch Action Tree**. Jira controls the sidebar panel order; use Jira's panel ordering controls if needed.
+3. In **Convert List to Sub-Issues**, select a list, review its preview, and click **Create Tasks**. Keep the modal open until conversion finishes.
 4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
 
 The Action Tree popup also displays created Tasks as nested rich issue cards, both during conversion and after completion.
 
-For this input:
+For example, start with these native checkbox actions (shown here in Markdown notation):
 
 ```text
-- A
-- B
-  - C
-    - D
-    - E
-  - F
-- G
+- [ ] A
+- [ ] B
+  - [ ] C
+    - [ ] D
+    - [x] E
+  - [ ] F
+- [ ] G
 ```
 
-Action Tree creates seven **Task** issues in the source issue's project. A, B and G link to the source Task; C and F link to B; D and E link to C. Each child **is subtask of** its immediate parent, and each parent **has subtask** its children. These are reciprocal views of one Jira issue link per relationship. They are not Jira's built-in Sub-task issue type or `parent` field, so the link-based tree can nest beyond Jira's native subtask hierarchy. No transitive links are added between grandchildren and grandparents.
+Action Tree creates seven **Task** issues in the source issue's project. A, B and G link to the source Task; C and F link to B; D and E link to C. Each child **is subtask of** its immediate parent, and each parent **has subtask** its children. These are reciprocal views of one Jira issue link per relationship. No transitive links are added between grandchildren and grandparents.
+
+The result is a bulleted tree of rich issue cards with the same shape. Each card resolves its issue title, type and status through Jira.
 
 Other description blocks stay intact. Use native Jira editor checkbox action lists (`taskList` / `taskItem`, including paragraph-based `blockTaskItem`) or bullet lists, not plain text containing checkbox symbols or hyphens. Nested action lists follow the preceding action item in ADF; their parent relationships are preserved. Both list types become nested bulleted lists of rich issue cards.
 
-Checked and unchecked actions are included. The preview shows their checkbox state, and the original `TODO` / `DONE` state is recorded in each created Task's `action-tree.origin` property. Created Tasks use the project's default workflow status; checking an action does not select or transition a Jira workflow status automatically. Up to 100 items and 20 nesting levels per conversion. Titles must be 1–255 characters. Unsupported blocks, empty items and lists already containing Jira ticket links are rejected. Created Tasks receive titles and the project/issue type; other fields use Jira's configured defaults. Extra required fields without defaults block conversion before the first creation.
+Checked and unchecked actions are included. The preview shows their checkbox state, and the original `TODO` / `DONE` state is recorded in each created Task's `action-tree.origin` property. Created Tasks use the project's default workflow status; checking an action does not select or transition a Jira workflow status automatically. Other issue fields use Jira's configured defaults. Extra required fields without defaults block conversion before the first creation.
+
+## Supported input and limits
+
+| Item | Support |
+| --- | --- |
+| Source issue type | Task |
+| Created issue type | Task, in the source issue's project |
+| Source lists | Native Jira checkbox action lists and bullet lists |
+| List location | Directly in the description; lists inside tables, panels or other containers are not discovered |
+| Tree shape | Any branching shape within the limits below |
+| Nesting | Up to 20 nested levels below the root list: 21 levels including the root |
+| Size | Up to 100 items per conversion |
+| Item titles | 1–255 characters |
+| Output | Nested bullet list of rich Jira issue cards |
+
+Unsupported content, empty items and lists already containing Jira issue links or cards are rejected before creation. Select and convert one top-level list at a time; all of its descendants belong to that conversion.
 
 ## Site prerequisites
 
@@ -42,14 +73,19 @@ Checked and unchecked actions are included. The preview shows their checkbox sta
 npm ci
 npm run check
 npm run forge -- login
-npm run forge -- register 'Action Tree'
 npm run forge -- lint
 npm run forge -- deploy --environment development
 npm run forge -- install --site YOUR-SITE.atlassian.net --product jira --environment development
 npm run forge -- tunnel
 ```
 
-Forge registration may ask you to select a Developer Space and accept Atlassian's terms. Registration replaces the placeholder `app.id` in `manifest.yml` with your real app ID. Do not register again for routine deployments: it creates a different app identity. Use the same identity for development and production environments.
+The repository already contains Action Tree's registered `app.id`. Its owner and contributors should reuse that identity. If you fork the project and need your own app, register it **once**, before deploying:
+
+```sh
+npm run forge -- register 'Action Tree'
+```
+
+Registration updates `manifest.yml` with your own app ID and may ask you to select or create a Developer Space and accept Atlassian's terms. Do not register again for routine deployments: it creates a different app identity. Use the same app identity across development, staging and production.
 
 Node 24 is required. `.nvmrc` and GitHub Actions select Node 24. A local Node runtime is also installed as a development dependency, so `npm run forge -- …` uses the supported version even when your shell runs another Node version. Avoid bare `npx forge` with an unsupported system Node.
 
@@ -60,6 +96,34 @@ Pull requests and pushes to `main` run ESLint and the Node test suite. A success
 The workflow runs `forge lint --environment production` before deployment. Normal changes deploy automatically. If Forge reports `MAJOR_VERSION_RULE` (including permission changes that cause a major app version), the workflow validates that there are no other lint failures, then pauses at an approval-only job using the **`permission-upgrade` GitHub environment**. Configure that environment with `moritzf` as a required reviewer. Permit self-review so the repository owner can approve their own changes. Only after the review succeeds does deployment use `--approve MAJOR_VERSION_RULE` and upgrade the site installation. Rejecting the review or any other lint error blocks deployment.
 
 The environment name itself does not enforce review: its required-reviewer protection rule does. `permission-upgrade` needs no secrets or variables; deployment credentials remain in `production`. Approve pending upgrades through **Actions → workflow run → Review deployments** after reviewing the lint output.
+
+### Deployment flow
+
+```mermaid
+flowchart TD
+    A[Push to main] --> B[CI: lint and tests]
+    B --> C[Check Forge production permissions]
+    C --> D{MAJOR_VERSION_RULE?}
+    D -->|No| F[Deploy and upgrade]
+    D -->|Yes| E[permission-upgrade: wait for human review]
+    E -->|Approved| F
+    E -->|Rejected| X[Stop]
+    F --> G[Forge production: live Action Tree app]
+    G --> H[Configured private Jira site]
+```
+
+There are two different uses of the word **environment**:
+
+| System | Environment | Purpose |
+| --- | --- | --- |
+| GitHub Actions | `production` | Stores the credentials and configuration used by workflow jobs |
+| GitHub Actions | `permission-upgrade` | Requires a human review before a major-version deployment can continue; hosts no application |
+| Atlassian Forge | `production` | Runs the live deployed app |
+| Atlassian Forge | `development`, `staging` | Separate app deployments available for development and testing; this CI/CD pipeline does not deploy to them |
+
+Using a separate GitHub approval environment keeps ordinary deployments automatic. Requiring review on GitHub's `production` environment instead would pause every deployment, including ordinary code changes.
+
+### Deployment credentials
 
 In **Settings → Environments → production**, configure:
 
@@ -93,7 +157,7 @@ An initial push before credentials are configured will pass CI and fail deployme
 
 Each resolver call creates and links at most one Task to avoid a single long-running invocation. Progress is saved after creation and after linking. An atomic KVS lease prevents overlapping operations on one source issue. Persistent creation claims prevent automatic duplicate creation if a network failure leaves the outcome uncertain. Jira issues include an `action-tree.origin` entity property with the source issue, conversion ID and item index for reconciliation. Conversion state is scoped to the Forge installation and source issue; unfinished conversions resume before another list can be processed.
 
-Tests cover the A–G hierarchy, link direction, title/size validation, preservation of surrounding ADF, stale preview rejection, non-Task rejection, partial link failure, uncertain creation, definitive Jira errors and resuming a completed conversion. Run `npm run check`; `npm run forge -- lint` additionally validates the manifest and scopes and requires Forge login.
+Tests cover native checkbox actions, the A–G hierarchy, partial rich-card trees, link direction, title/size validation, preservation of surrounding ADF, stale preview rejection, non-Task rejection, partial link failure, uncertain creation, definitive Jira errors, completed conversions and permission-upgrade detection. Run `npm run check`; `npm run forge -- lint` additionally validates the manifest and scopes and requires Forge login.
 
 ## Failure recovery and limits
 
@@ -107,4 +171,4 @@ Conversion state and create claims are retained for recovery. Uninstalling the a
 
 ## License
 
-[PolyForm Noncommercial License 1.0.0](LICENSE), as requested. See [NOTICE](NOTICE). This is source-available software; commercial licensing is not granted by this license. Third-party dependencies retain their own licenses.
+[PolyForm Noncommercial License 1.0.0](LICENSE). See [NOTICE](NOTICE). This is source-available software; commercial licensing is not granted by this license. Third-party dependencies retain their own licenses.
