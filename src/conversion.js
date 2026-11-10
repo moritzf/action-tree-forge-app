@@ -1,7 +1,10 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { findLists, fingerprint, linkedList, replaceList, linkPayload } from './tree.js';
 
 export const digest = (value) => createHash('sha256').update(fingerprint(value)).digest('hex');
+
+// Leave room for created issue keys and progress flags as the stored run grows.
+const MAX_INITIAL_RUN_BYTES = 180_000;
 
 // Inject Jira and storage so failure/recovery behavior can be tested without a site.
 export function conversionService({ jira, store }) {
@@ -15,7 +18,12 @@ export function conversionService({ jira, store }) {
   }
   async function inspect(issueId) {
     const issue = await source(issueId);
-    return { key: issue.key, lists: findLists(issue.fields.description).map((list) => ({ ...list, hash: digest(issue.fields.description.content[list.index]) })), run: await store.get(stateKey(issueId)) };
+    const description = issue.fields.description;
+    const lists = findLists(description).map((list) => ({
+      ...list,
+      hash: digest(description.content[list.index]),
+    }));
+    return { key: issue.key, lists, run: await store.get(stateKey(issueId)) };
   }
   async function begin(issueId, index, expected) {
     const existing = await store.get(stateKey(issueId));
@@ -26,8 +34,19 @@ export function conversionService({ jira, store }) {
     const original = issue.fields.description.content[index];
     if (digest(original) !== expected) throw new Error('The list changed. Close and reopen Action Tree to preview it again.');
     const setup = await jira.preflight(issue);
-    const run = { id: digest([issue.id, index, original]), index, original, nodes: list.nodes, sourceKey: issue.key, ...setup, done: false };
-    if (Buffer.byteLength(JSON.stringify(run)) > 180000) throw new Error('This list is too large. Split it into smaller lists.');
+    const run = {
+      // A fresh conversion must not reuse claims from an identical, completed list.
+      id: randomUUID(),
+      index,
+      original,
+      nodes: list.nodes,
+      sourceKey: issue.key,
+      ...setup,
+      done: false,
+    };
+    if (Buffer.byteLength(JSON.stringify(run)) > MAX_INITIAL_RUN_BYTES) {
+      throw new Error('This list is too large. Split it into smaller lists.');
+    }
     await store.set(stateKey(issueId), run);
     return run;
   }
@@ -51,6 +70,7 @@ export function conversionService({ jira, store }) {
           if (node.actionState) marker.actionState = node.actionState;
           const created = await jira.createTask(run.projectId, run.taskTypeId, node.summary, marker);
           node.key = created.key;
+          // Persist the issue key before linking so link failures cannot recreate it.
           await save();
         } catch (error) {
           if (error.definitive) await store.delete(claim);
@@ -63,6 +83,7 @@ export function conversionService({ jira, store }) {
       await save();
       return run;
     }
+    // Fetch again after all writes so unrelated edits made during creation survive.
     const current = await source(issueId);
     const replacement = linkedList(run.nodes, run.baseUrl);
     const description = replaceList(current.fields.description, run.index, run.original, replacement);
@@ -82,8 +103,9 @@ export function conversionService({ jira, store }) {
     if (!/^[A-Z][A-Z0-9_]*-\d+$/i.test(key || '')) throw new Error('Enter an existing Jira issue key.');
     const candidate = await jira.getIssue(key);
     const origin = await jira.getOrigin(key);
-    if (candidate.fields.project.id !== run.projectId || candidate.fields.issuetype.id !== run.taskTypeId ||
-      origin.source !== run.sourceKey || origin.run !== run.id || origin.index !== index) {
+    const matchesOrigin = origin.source === run.sourceKey && origin.run === run.id && origin.index === index;
+    const matchesType = candidate.fields.project.id === run.projectId && candidate.fields.issuetype.id === run.taskTypeId;
+    if (!matchesOrigin || !matchesType) {
       throw new Error('This Task was not created for the paused list item.');
     }
     run.nodes[index].key = candidate.key;

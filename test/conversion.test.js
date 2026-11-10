@@ -42,6 +42,27 @@ test('create, link, resume and replace use Task type and the source as root pare
   assert.deepEqual(f.state.fields.description.content[1], p('Keep me'));
 });
 
+test('identical lists in separate conversions do not reuse persistent creation claims', async () => {
+  const f = fixture();
+  const first = await f.service.begin('1', 0, digest(list));
+  await f.service.step('1');
+  await f.service.step('1');
+  await f.service.step('1');
+
+  // Reinsert the same content at the same position after the first conversion.
+  f.state.fields.description.content[0] = structuredClone(list);
+  const second = await f.service.begin('1', 0, digest(list));
+  assert.notEqual(second.id, first.id);
+  // Reopening an unfinished conversion must still reuse its original identity.
+  assert.equal((await f.service.begin('1', 0, digest(list))).id, second.id);
+  await f.service.step('1');
+  await f.service.step('1');
+  assert.equal((await f.service.step('1')).done, true);
+  assert.equal(f.calls.created.length, 4);
+  assert.equal(f.calls.updates, 2);
+  assert.equal(f.calls.created[2][3].run, second.id);
+});
+
 test('native checkbox actions convert with nested links and retain original completion metadata', async () => {
   const f = fixture();
   const actionList = { type: 'taskList', attrs: { localId: 'root' }, content: [
