@@ -1,5 +1,10 @@
 // Pure ADF transformations. The description stays in Jira's native rich-text format.
-export const fingerprint = (value) => JSON.stringify(value);
+// KVS/Jira may return object properties in a different order. Arrays retain their
+// meaningful order, while object-key order must not look like a description edit.
+export const fingerprint = (value) => JSON.stringify(value, (_, item) => {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+  return Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)));
+});
 
 const textOf = (node) => {
   if (node.type === 'text') return node.text;

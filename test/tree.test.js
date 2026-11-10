@@ -42,6 +42,16 @@ test('invalid, empty, oversized and unsupported list content is rejected before 
   assert.throws(() => parseList(list({ type: 'listItem', content: [{ type: 'codeBlock' }] })), /Unsupported/);
 });
 
+test('storage key reordering does not look like a concurrent description edit', () => {
+  const reordered = JSON.parse(JSON.stringify(example), (_, value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+    return Object.fromEntries(Object.entries(value).reverse());
+  });
+  const document = { type: 'doc', version: 1, content: [example] };
+  const replacement = linkedList(parseList(example).map((node, index) => ({ ...node, key: `TEST-${index}` })), 'https://example.atlassian.net');
+  assert.deepEqual(replaceList(document, 0, reordered, replacement).content[0], replacement);
+});
+
 test('link directions give parents has subtask and children is subtask of, including reversed configuration', () => {
   const usual = { id: '1', inward: 'is subtask of', outward: 'has subtask' };
   assert.deepEqual(linkPayload(usual, 'P-1', 'P-2'), { type: { id: '1' }, inwardIssue: { key: 'P-1' }, outwardIssue: { key: 'P-2' } });
