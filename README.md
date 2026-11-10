@@ -169,6 +169,24 @@ If the selected list changed, restore that list's original content before resumi
 
 Conversion state and create claims are retained for recovery. Uninstalling the app follows Atlassian's Forge storage retention policy; created Jira issues and links remain Jira data. Global issue link types are configured separately and remain on the site.
 
+## Known limitations and possible TODOs
+
+These are candidate improvements, not implemented features or a committed roadmap. The exact input limits are listed under [Supported input and limits](#supported-input-and-limits).
+
+| Current limitation | Possible improvement |
+| --- | --- |
+| **Create Tasks** appears after the preview, requiring scrolling for long lists. | Move the primary action and item count into a persistent modal footer. |
+| Conversion advances through browser-driven resolver calls; closing the popup interrupts progress. | Add background processing with a progress view that can be reopened. |
+| Only direct description action lists and bullet lists are selectable, one list per conversion. | Support lists inside panels or tables, numbered lists, and selecting multiple lists. |
+| Only regular Task issues in the source project are created. Required fields without defaults block conversion. | Add configurable issue types, field input, and project mappings. |
+| List content becomes plain-text issue summaries; formatting, mentions and other inline metadata are not copied as rich content to the created issues. | Preserve supported rich content in issue descriptions and offer explicit metadata mappings. |
+| Checked actions retain their original state only in the origin property; new Tasks use the default workflow status. | Offer an optional mapping from checked state to a valid workflow transition. |
+| Ambiguous creation failures can require administrator reconciliation, and there is no automatic rollback. | Add an administrator recovery view with an audit trail and explicit reconciliation controls. |
+| Concurrent description edits can race with the final update; an edited source list blocks resume. | Improve conflict detection and provide a reviewable merge or recovery flow. |
+| Conversion state and creation claims are retained for recovery without an app-defined cleanup schedule. | Define retention and safe cleanup rules that preserve duplicate-prevention guarantees. |
+
+The linked hierarchy also depends on a Jira administrator configuring the reciprocal link labels. It does not populate Jira's native `parent` field, so native hierarchy views and reports may not interpret these links as parent-child relationships.
+
 ## License
 
 [PolyForm Noncommercial License 1.0.0](LICENSE). See [NOTICE](NOTICE). This is source-available software; commercial licensing is not granted by this license. Third-party dependencies retain their own licenses.
