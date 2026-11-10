@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AdfRenderer, Button, Heading, Inline, ModalBody, ModalFooter, ProgressBar, SectionMessage, Select, Spinner, Stack, Text, Textfield } from '@forge/react';
-import { invoke } from '@forge/bridge';
+import { invoke, view } from '@forge/bridge';
 import { linkedList } from '../tree.ts';
 
 async function call(name, payload) {
@@ -15,6 +15,7 @@ export default function Converter({ onBusyChange, onClose }) {
   const [run, setRun] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [refreshWarning, setRefreshWarning] = useState('');
   const [recoveryKey, setRecoveryKey] = useState('');
   useEffect(() => { onBusyChange(busy); }, [busy, onBusyChange]);
   useEffect(() => {
@@ -29,12 +30,20 @@ export default function Converter({ onBusyChange, onClose }) {
     if (busy) return;
     setBusy(true);
     setError('');
+    setRefreshWarning('');
     try {
       let current = run && !run.done ? run : await call('begin', { index: selected.index, hash: selected.hash });
       setRun(current);
       while (!current.done) {
         current = await call('step');
         setRun(current);
+      }
+      // Refresh Jira only after the replacement is saved. A refresh failure must
+      // not turn a completed conversion into a resumable creation failure.
+      try {
+        await view.refresh();
+      } catch {
+        setRefreshWarning('Tasks were created and the description was saved. Reload the Jira page to see the updated list.');
       }
     } catch (failure) {
       setError(failure.message);
@@ -55,6 +64,7 @@ export default function Converter({ onBusyChange, onClose }) {
     <ModalBody><Stack space="space.200">
     <Heading as="h2" size="medium">Convert List to Sub-Issues</Heading>
     {error && <SectionMessage appearance="error" title="Conversion paused"><Text>{error}</Text></SectionMessage>}
+    {refreshWarning && <SectionMessage appearance="warning" title="Jira view could not refresh"><Text>{refreshWarning}</Text></SectionMessage>}
     {error.includes('uncertain') && <>
       <Text>If the Task was created, enter its issue key to recover it. Action Tree verifies its origin before using it.</Text>
       <Textfield label="Created Task key" value={recoveryKey} onChange={(event) => setRecoveryKey(event.target.value)} />
