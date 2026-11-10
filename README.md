@@ -1,5 +1,7 @@
 # Action Tree
 
+![Action Tree demonstration](action-tree-demonstration.gif)
+
 Turn a nested Jira action list into a tree of linked Task issues, then replace the source list with rich issue cards.
 
 Action Tree is an Atlassian Forge app built with native UI Kit. It supports Jira checkbox action lists and bullet lists, preserves parent-child relationships, and can resume an interrupted conversion. Application processing and conversion state stay on Atlassian; there is no external backend.
