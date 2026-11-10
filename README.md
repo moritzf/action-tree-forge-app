@@ -53,6 +53,10 @@ Node 24 is required. `.nvmrc` and GitHub Actions select Node 24. A local Node ru
 
 Pull requests and pushes to `main` run ESLint and the Node test suite. A successful main-branch push triggers the production deployment workflow. Manual dispatch also runs the checks before deploying. Deployment targets the private site configured in the **GitHub environment `production`**, and deployments are serialized. Fork pull requests never receive deployment credentials.
 
+The workflow runs `forge lint --environment production` before deployment. Normal changes deploy automatically. If Forge reports `MAJOR_VERSION_RULE` (including permission changes that cause a major app version), the workflow validates that there are no other lint failures, then pauses at an approval-only job using the **`permission-upgrade` GitHub environment**. Configure that environment with `moritzf` as a required reviewer. Permit self-review so the repository owner can approve their own changes. Only after the review succeeds does deployment use `--approve MAJOR_VERSION_RULE` and upgrade the site installation. Rejecting the review or any other lint error blocks deployment.
+
+The environment name itself does not enforce review: its required-reviewer protection rule does. `permission-upgrade` needs no secrets or variables; deployment credentials remain in `production`. Approve pending upgrades through **Actions → workflow run → Review deployments** after reviewing the lint output.
+
 In **Settings → Environments → production**, configure:
 
 | Kind | Name | Value |

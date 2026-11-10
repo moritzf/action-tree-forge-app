@@ -17,10 +17,12 @@ concurrency:
   group: forge-production
   cancel-in-progress: false
 jobs:
-  deploy:
+  check-permissions:
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     environment: production
+    outputs:
+      major: ${{ steps.permissions.outputs.major }}
     env:
       FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
       FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
@@ -40,8 +42,51 @@ jobs:
       - name: Validate deployment configuration
         run: node scripts/configure-ci.mjs
       - run: npx forge settings set usage-analytics false
-      - run: npx forge lint
-      - run: npx forge deploy --environment production --non-interactive
+      - name: Check Forge permission upgrades
+        id: permissions
+        run: node scripts/check-forge-permissions.mjs
+
+  approve-permissions:
+    needs: check-permissions
+    if: needs.check-permissions.outputs.major == 'true'
+    runs-on: ubuntu-latest
+    environment: permission-upgrade
+    steps:
+      - run: echo 'Permission upgrade approved through GitHub environment review.'
+
+  deploy:
+    needs: [check-permissions, approve-permissions]
+    if: >-
+      !cancelled() &&
+      needs.check-permissions.result == 'success' &&
+      (needs.check-permissions.outputs.major == 'false' || needs.approve-permissions.result == 'success')
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
+      FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+      FORGE_APP_ID: ${{ vars.FORGE_APP_ID }}
+      ATLASSIAN_SITE: ${{ vars.ATLASSIAN_SITE }}
+      FORGE_USAGE_ANALYTICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/configure-ci.mjs
+      - run: npx forge settings set usage-analytics false
+      - name: Deploy checked and approved changes
+        env:
+          MAJOR_UPGRADE: ${{ needs.check-permissions.outputs.major }}
+        shell: bash
+        run: |
+          args=(--environment production --non-interactive)
+          if [[ "$MAJOR_UPGRADE" == true ]]; then args+=(--approve MAJOR_VERSION_RULE); fi
+          npx forge deploy "${args[@]}"
       - name: Install or upgrade on configured private site
         env:
           INSTALLATION: ${{ inputs.installation || 'upgrade' }}
