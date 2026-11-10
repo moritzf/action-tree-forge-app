@@ -91,7 +91,7 @@ Node 24 is required. `.nvmrc` and GitHub Actions select Node 24. A local Node ru
 
 ## GitHub CI/CD
 
-Pull requests and pushes to `main` run ESLint and the Node test suite. A successful main-branch push triggers the production deployment workflow. Manual dispatch also runs the checks before deploying. Deployment targets the private site configured in the **GitHub environment `production`**, and deployments are serialized. Fork pull requests never receive deployment credentials.
+Pull requests and pushes to `main` run ESLint, strict TypeScript checking and the Node test suite. A successful main-branch push triggers the production deployment workflow. Manual dispatch also runs the checks before deploying. Deployment targets the private site configured in the **GitHub environment `production`**, and deployments are serialized. Fork pull requests never receive deployment credentials.
 
 The workflow runs `forge lint --environment production` before deployment. Normal changes deploy automatically. If Forge reports `MAJOR_VERSION_RULE` (including permission changes that cause a major app version), the workflow validates that there are no other lint failures, then pauses at an approval-only job using the **`permission-upgrade` GitHub environment**. Configure that environment with `moritzf` as a required reviewer. Permit self-review so the repository owner can approve their own changes. Only after the review succeeds does deployment use `--approve MAJOR_VERSION_RULE` and upgrade the site installation. Rejecting the review or any other lint error blocks deployment.
 
@@ -148,6 +148,7 @@ An initial push before credentials are configured will pass CI and fail deployme
 
 | Decision | Reason and tradeoff |
 | --- | --- |
+| **TypeScript backend with a JSX frontend** | Strict types describe conversion state, ADF nodes, Jira responses and storage operations. The existing UI Kit frontend stays in JavaScript/JSX; HTTP response types document expectations rather than validate arbitrary JSON at runtime. |
 | **Native Forge UI Kit instead of Custom UI** | Jira-styled components, a native modal and `AdfRenderer` cover the current workflow without a separate HTML/CSS application or frontend build. Layout and styling remain constrained by UI Kit; reconsider Custom UI if richer interactions require it. |
 | **Issue context panel with a launch button** | Keeps conversion next to the source issue in the sidebar. Jira controls panel placement, so the app cannot guarantee an exact position below Automation. |
 | **Regular Tasks with reciprocal issue links** | Supports recursive trees while keeping every created issue a Task. These links do not participate in Jira's native `parent` hierarchy. |
@@ -164,14 +165,18 @@ An initial push before credentials are configured will pass CI and fail deployme
 | --- | --- |
 | `src/frontend/index.jsx` | Issue sidebar button and native UI Kit modal |
 | `src/frontend/converter.jsx` | Preview, confirmation, progress and resume |
-| `src/index.js` | Resolver boundary, trusted issue context, per-issue conversion lease |
-| `src/conversion.js` | Durable conversion state machine, create claims and recovery boundaries |
-| `src/jira.js` | User-authorized Jira REST calls, field/permission preflight and link operations |
-| `src/tree.js` | Pure ADF parsing, parent mapping and description replacement |
+| `src/index.ts` | Resolver boundary, trusted issue context, per-issue conversion lease |
+| `src/conversion.ts` | Durable conversion state machine, create claims and recovery boundaries |
+| `src/jira.ts` | User-authorized Jira REST calls, field/permission preflight and link operations |
+| `src/tree.ts` | Pure ADF parsing, parent mapping and description replacement |
+| `src/types.ts` | Shared domain types and Jira/storage contracts |
+| `src/errors.ts` | Safe error handling and definitive rejection checks |
+
+`npm run typecheck` checks the backend with strict TypeScript settings and no emitted files. Forge handles deployment bundling; Node 24 runs the JavaScript tests against the `.ts` sources through the `tsx` loader. The compiler configuration permits emission for Forge’s bundler, while the type-check command explicitly uses `--noEmit`. `tsconfig.json` includes only backend/shared TypeScript files so Forge does not try to type-check the JSX frontend as backend code.
 
 Each resolver call creates and links at most one Task to avoid a single long-running invocation. Progress is saved after creation and after linking. An atomic KVS lease prevents overlapping operations on one source issue. Persistent creation claims prevent automatic duplicate creation if a network failure leaves the outcome uncertain. Jira issues include an `action-tree.origin` entity property with the source issue, conversion ID and item index for reconciliation. Conversion state is scoped to the Forge installation and source issue; unfinished conversions resume before another list can be processed.
 
-Tests cover native checkbox actions, the A–G hierarchy, partial rich-card trees, link direction, title/size validation, preservation of surrounding ADF, stale preview rejection, non-Task rejection, partial link failure, uncertain creation, definitive Jira errors, completed conversions and permission-upgrade detection. Run `npm run check`; `npm run forge -- lint` additionally validates the manifest and scopes and requires Forge login.
+Tests cover native checkbox actions, the A–G hierarchy, partial rich-card trees, link direction, title/size validation, preservation of surrounding ADF, stale preview rejection, non-Task rejection, partial link failure, uncertain creation, definitive Jira errors, completed conversions, resolver payload validation and permission-upgrade detection. Run `npm run check`; `npm run forge -- lint` additionally validates the manifest and scopes and requires Forge login.
 
 ## Failure recovery and limits
 
