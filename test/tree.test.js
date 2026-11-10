@@ -95,6 +95,17 @@ test('storage key reordering does not look like a concurrent description edit', 
   assert.deepEqual(replaceList(document, 0, reordered, replacement).content[0], replacement);
 });
 
+test('popup shows created issue cards in their hierarchy while a conversion is incomplete', () => {
+  const nodes = parseList(example).map((node, index) => ({ ...node, ...(index < 3 ? { key: `TEST-${index + 1}` } : {}) }));
+  const partial = linkedList(nodes, 'https://example.atlassian.net', { createdOnly: true });
+  assert.equal(partial.content.length, 2);
+  const nested = partial.content[1].content[1];
+  assert.equal(nested.content.length, 1);
+  assert.deepEqual(nested.content[0].content[0].content, [{ type: 'inlineCard', attrs: { url: 'https://example.atlassian.net/browse/TEST-3' } }]);
+  assert.equal(nested.content[0].content.length, 1); // No empty list for the uncreated D/E children.
+  assert.throws(() => linkedList(nodes, 'https://example.atlassian.net'), /Every task must be created/);
+});
+
 test('link directions give parents has subtask and children is subtask of, including reversed configuration', () => {
   const usual = { id: '1', inward: 'is subtask of', outward: 'has subtask' };
   assert.deepEqual(linkPayload(usual, 'P-1', 'P-2'), { type: { id: '1' }, inwardIssue: { key: 'P-1' }, outwardIssue: { key: 'P-2' } });

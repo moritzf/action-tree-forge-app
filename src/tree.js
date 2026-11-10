@@ -70,16 +70,19 @@ export function findLists(description) {
   });
 }
 
-export function linkedList(nodes, baseUrl) {
+export function linkedList(nodes, baseUrl, { createdOnly = false } = {}) {
   const build = (parent) => ({
     type: 'bulletList',
     content: nodes.flatMap((node, index) => {
       if (node.parent !== parent) return [];
-      if (!node.key) throw new Error('Every task must be created before replacing the list.');
+      if (!node.key) {
+        if (createdOnly) return [];
+        throw new Error('Every task must be created before replacing the list.');
+      }
       const content = [{ type: 'paragraph', content: [
         { type: 'inlineCard', attrs: { url: `${baseUrl}/browse/${node.key}` } },
       ] }];
-      if (nodes.some((child) => child.parent === index)) content.push(build(index));
+      if (nodes.some((child) => child.parent === index && (!createdOnly || child.key))) content.push(build(index));
       return [{ type: 'listItem', content }];
     }),
   });

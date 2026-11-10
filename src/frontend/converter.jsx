@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Heading, Link, ProgressBar, SectionMessage, Select, Spinner, Stack, Text, Textfield } from '@forge/react';
+import { AdfRenderer, Button, Heading, ProgressBar, SectionMessage, Select, Spinner, Stack, Text, Textfield } from '@forge/react';
 import { invoke } from '@forge/bridge';
+import { linkedList } from '../tree.js';
 
 async function call(name, payload) {
   const result = await invoke(name, payload);
@@ -71,7 +72,9 @@ export default function Converter({ onClose }) {
       {run && <>
         <ProgressBar value={run.done ? 1 : complete / (run.nodes.length + 1)} />
         <Text>{run.done ? 'Done. The description now contains the nested issue card list.' : `${complete} of ${run.nodes.length} Tasks created and linked. Keep this window open while converting.`}</Text>
-        {run.nodes.filter((node) => node.key).map((node) => <Text key={node.key}><Link href={`${run.baseUrl}/browse/${node.key}`}>{node.key}</Link>{` — ${node.summary}`}</Text>)}
+        {run.nodes.some((node) => node.key) && <AdfRenderer document={{
+          type: 'doc', version: 1, content: [linkedList(run.nodes, run.baseUrl, { createdOnly: true })],
+        }} />}
       </>}
       {run?.done && preview.lists.some((list) => !list.error) && <Button onClick={() => setRun(null)}>Convert another list</Button>}
       {!run?.done && <Text>The selected list will become a nested bulleted list of rich Jira issue cards. Other description content is preserved. Up to 100 Tasks per conversion.</Text>}

@@ -9,6 +9,8 @@ An Atlassian Forge app that turns a native Jira checkbox action list or nested b
 3. Click **Create Tasks** and keep the modal open until conversion finishes.
 4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
 
+The Action Tree popup also displays created Tasks as nested rich issue cards, both during conversion and after completion.
+
 For this input:
 
 ```text
