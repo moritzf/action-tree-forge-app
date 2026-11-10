@@ -1,4 +1,8 @@
 // Pure ADF transformations. The description stays in Jira's native rich-text format.
+const MAX_NESTED_DEPTH = 20;
+const MAX_ITEMS = 100;
+const MAX_SUMMARY_LENGTH = 255;
+
 // KVS/Jira may return object properties in a different order. Arrays retain their
 // meaningful order, while object-key order must not look like a description edit.
 export const fingerprint = (value) => JSON.stringify(value, (_, item) => {
@@ -23,7 +27,7 @@ export function parseList(list) {
   const nodes = [];
   function visit(current, parent, depth) {
     if (!isList(current)) throw new Error('Use a Jira action list or bulleted list.');
-    if (depth > 20) throw new Error('The maximum nesting depth is 20.');
+    if (depth > MAX_NESTED_DEPTH) throw new Error(`The maximum nesting depth is ${MAX_NESTED_DEPTH}.`);
     if (!current.content?.length) throw new Error('This list is empty.');
     let previous = null;
     for (const item of current.content || []) {
@@ -38,7 +42,9 @@ export function parseList(list) {
       const blocks = item.content || [];
       const paragraphs = blocks.filter((block) => !isList(block));
       const summary = paragraphs.map(textOf).join(item.type === 'taskItem' ? '' : ' ').trim();
-      if (!summary || summary.length > 255) throw new Error('Each item needs a title of 1–255 characters.');
+      if (!summary || summary.length > MAX_SUMMARY_LENGTH) {
+        throw new Error(`Each item needs a title of 1–${MAX_SUMMARY_LENGTH} characters.`);
+      }
       const index = nodes.length;
       const node = { summary, parent, depth };
       if (current.type === 'taskList') {
@@ -48,7 +54,7 @@ export function parseList(list) {
       }
       nodes.push(node);
       previous = index;
-      if (nodes.length > 100) throw new Error('Convert at most 100 items at a time.');
+      if (nodes.length > MAX_ITEMS) throw new Error(`Convert at most ${MAX_ITEMS} items at a time.`);
       for (const child of blocks.filter(isList)) visit(child, index, depth + 1);
     }
   }

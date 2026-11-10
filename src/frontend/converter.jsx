@@ -64,7 +64,7 @@ export default function Converter({ onBusyChange }) {
       {!run?.done && <SectionMessage appearance="information" title="How it works">
         <Text>Each item becomes a Task linked to its parent. The list is replaced with rich issue cards; other text stays unchanged.</Text>
       </SectionMessage>}
-      {(!run || run.done) && !run?.done && <>
+      {!run && <>
         <Select label={`List from ${preview.key}`} options={preview.lists.map((list) => ({ label: list.error ? `${list.label}: ${list.error}` : list.label, value: list.index, isDisabled: !!list.error }))}
           value={selected ? { label: selected.label, value: selected.index } : null}
           onChange={(option) => setSelected(preview.lists.find((list) => list.index === option?.value) || null)} />

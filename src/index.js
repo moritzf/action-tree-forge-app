@@ -11,6 +11,7 @@ const store = {
 };
 const service = conversionService({ jira, store });
 const definitions = {};
+const CONVERSION_LEASE_SECONDS = 60;
 
 function issueId(context) {
   const id = context.extension?.issue?.id;
@@ -22,19 +23,30 @@ async function locked(id, operation) {
   const key = `lock:${id}`;
   try {
     // The lease outlasts a UI resolver invocation. Expiry recovers an interrupted process.
-    await kvs.set(key, true, { keyPolicy: 'FAIL_IF_EXISTS', ttl: { value: 60, unit: 'SECONDS' } });
+    await kvs.set(key, true, {
+      keyPolicy: 'FAIL_IF_EXISTS',
+      ttl: { value: CONVERSION_LEASE_SECONDS, unit: 'SECONDS' },
+    });
   } catch {
     throw new Error('A conversion is already running. Wait one minute before resuming.');
   }
-  try { return await operation(); }
-  finally { await kvs.delete(key); }
+  try {
+    return await operation();
+  } finally {
+    await kvs.delete(key);
+  }
 }
 
 // Return errors explicitly: bridge errors otherwise hide useful Jira permission messages.
-const define = (name, operation) => { definitions[name] = async (request) => {
-  try { return { data: await operation(request, issueId(request.context)) }; }
-  catch (error) { return { error: error.message }; }
-}; };
+function define(name, operation) {
+  definitions[name] = async (request) => {
+    try {
+      return { data: await operation(request, issueId(request.context)) };
+    } catch (error) {
+      return { error: error.message };
+    }
+  };
+}
 
 define('inspect', (_, id) => service.inspect(id));
 define('begin', ({ payload }, id) => locked(id, () => service.begin(id, payload.index, payload.hash)));
