@@ -1,0 +1,52 @@
+name: Deploy to private Jira site
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      installation:
+        description: Installation action (use install for the first deployment)
+        type: choice
+        options: [upgrade, install]
+        default: upgrade
+permissions:
+  contents: read
+concurrency:
+  group: forge-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      FORGE_EMAIL: ${{ secrets.FORGE_EMAIL }}
+      FORGE_API_TOKEN: ${{ secrets.FORGE_API_TOKEN }}
+      FORGE_APP_ID: ${{ vars.FORGE_APP_ID }}
+      ATLASSIAN_SITE: ${{ vars.ATLASSIAN_SITE }}
+      FORGE_USAGE_ANALYTICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Validate deployment configuration
+        run: node scripts/configure-ci.mjs
+      - run: npx forge settings set usage-analytics false
+      - run: npx forge lint
+      - run: npx forge deploy --environment production --non-interactive
+      - name: Install or upgrade on configured private site
+        env:
+          INSTALLATION: ${{ inputs.installation || 'upgrade' }}
+        shell: bash
+        run: |
+          args=(--site "$ATLASSIAN_SITE" --product jira --environment production --non-interactive --confirm-scopes)
+          if [[ "$INSTALLATION" == upgrade ]]; then args+=(--upgrade); fi
+          npx forge install "${args[@]}"

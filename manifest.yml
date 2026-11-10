@@ -1,0 +1,28 @@
+modules:
+  jira:issueAction:
+    - key: action-tree
+      title: Action Tree
+      resource: main
+      render: native
+      resolver:
+        function: resolver
+      viewportSize: large
+      displayConditions:
+        issueType: Task
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
+    - storage:app
+app:
+  id: ari:cloud:ecosystem::app/00000000-0000-4000-8000-000000000000
+  runtime:
+    name: nodejs24.x
+    memoryMB: 256
+    architecture: arm64
