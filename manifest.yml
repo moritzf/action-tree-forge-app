@@ -2,7 +2,7 @@ modules:
   jira:issueContext:
     - key: action-tree-context
       title: Action Tree
-      label: Convert with Action Tree
+      label: Launch Action Tree
       resource: main
       render: native
       resolver:

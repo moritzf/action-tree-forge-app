@@ -6,7 +6,7 @@ function Sidebar() {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   return <>
-    <Button appearance="primary" onClick={() => setOpen(true)}>Convert with Action Tree</Button>
+    <Button appearance="primary" onClick={() => setOpen(true)}>Launch Action Tree</Button>
     <ModalTransition>
       {open && <Modal width="large" onClose={close}>
         <ModalHeader><ModalTitle>Action Tree</ModalTitle></ModalHeader>

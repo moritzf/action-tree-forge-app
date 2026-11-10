@@ -5,7 +5,7 @@ An Atlassian Forge app that turns a native Jira checkbox action list or nested b
 ## Usage
 
 1. Open a **Task** with a native checkbox action list or bulleted list in its description.
-2. In the issue's right sidebar, expand **Action Tree** below the issue fields and click **Convert with Action Tree**, then select the list and review the preview. Jira controls the sidebar panel order; place Action Tree below Automation using Jira's panel ordering controls if needed.
+2. In the issue's right sidebar, expand **Action Tree** below the issue fields and click **Launch Action Tree**, then select the list and review the preview. Jira controls the sidebar panel order; place Action Tree below Automation using Jira's panel ordering controls if needed.
 3. Click **Create Tasks** and keep the modal open until conversion finishes.
 4. The selected list becomes a nested bulleted list of rich Jira issue cards (ADF `inlineCard` nodes), with issue details resolved by Jira. Refresh the issue if necessary.
 
